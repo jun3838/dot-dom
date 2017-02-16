@@ -1,3 +1,4 @@
+global.Symbol = () => ({})
 require('../dotdom');
 const dd = window;
 
@@ -269,8 +270,9 @@ describe('.dom', function () {
 
         const dom1 = dom.firstChild;
 
+        expect(updateHandler.mock.calls.length).toEqual(1)
         expect(updateHandler.mock.calls).toEqual([
-          [dom1, undefined]
+          [dom1]
         ])
       });
 
@@ -292,13 +294,39 @@ describe('.dom', function () {
 
         const dom2 = dom.firstChild;
 
+        expect(updateHandler.mock.calls.length).toEqual(3)
         expect(updateHandler.mock.calls).toEqual([
-          [dom1, undefined],
-          [dom2, dom1]
+          [dom1],
+          [],
+          [dom2]
         ])
       });
 
-      it('should be called with the correct arguments when unmounted', function () {
+      it('should not be called when DOM is not replaced', function () {
+        const dom = document.createElement('div');
+        const updateHandler = jest.fn();
+        const SampleComponent = (props, state, setState, onUpdate) => {
+          onUpdate(updateHandler);
+          return dd.H('div', {className: props.className});
+        };
+
+        const vdom1 = dd.H(SampleComponent, {className: 'foo'});
+        dd.R(vdom1, dom)
+
+        const dom1 = dom.firstChild;
+
+        const vdom2 = dd.H(SampleComponent, {className: 'bar'});
+        dd.R(vdom2, dom)
+
+        const dom2 = dom.firstChild;
+
+        expect(updateHandler.mock.calls.length).toEqual(1)
+        expect(updateHandler.mock.calls).toEqual([
+          [dom1]
+        ])
+      });
+
+      it('should be called with the correct arguments when replaced', function () {
         const dom = document.createElement('div');
         const updateHandler = jest.fn();
         const SampleComponent = (props, state, setState, onUpdate) => {
@@ -314,12 +342,34 @@ describe('.dom', function () {
         const vdom2 = dd.H('span');
         dd.R(vdom2, dom)
 
+        expect(updateHandler.mock.calls.length).toEqual(2)
         expect(updateHandler.mock.calls).toEqual([
-          [dom1, undefined],
-          [undefined, dom1]
+          [dom1],
+          []
         ])
       });
 
+      it('should be called with the correct arguments when removed', function () {
+        const dom = document.createElement('div');
+        const updateHandler = jest.fn();
+        const SampleComponent = (props, state, setState, onUpdate) => {
+          onUpdate(updateHandler);
+          return dd.H(props.tag);
+        };
+
+        const vdom1 = dd.H(SampleComponent, {tag: 'div'});
+        dd.R(vdom1, dom)
+
+        const dom1 = dom.firstChild;
+
+        dd.R([], dom)
+
+        expect(updateHandler.mock.calls.length).toEqual(2)
+        expect(updateHandler.mock.calls).toEqual([
+          [dom1],
+          []
+        ])
+      });
     });
 
     describe('Reconciliation', function () {
