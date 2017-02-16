@@ -30,7 +30,9 @@
     $: element,                                                       // 'E' holds the name or function passed as
                                                                       // first argument
 
-    P: (props.$ || props.trim)                                        // If the props argument is a renderable VNode,
+    P: (props.$ || props.trim || props.map)                           // If the props argument is a renderable VNode,
+                                                                      // a string or an array, then
+
         ? {C: [].concat(props, ...children)}                          // ... prepend it to the children
         : (props.C = [].concat(...children)) && props                 // ... otherwise append 'C' to the property
                                                                       // the .concat ensures that arrays of children
@@ -81,7 +83,8 @@
 
         /* Expand functional Components */
 
-        vnode.$ && vnode.$.call &&                                    // If the vnode is a functional component, expand
+        (vnode.$ || _unused1).call &&                                 // (This expands to : vnode.$ && vnode.$.call &&)
+                                                                      // If the vnode is a functional component, expand
           (vnode = vnode.$(                                           // it and replace the current vnode variable.
 
             vnode.P,                                                  // 1. The component properties
@@ -121,7 +124,7 @@
             ? (_child.$ != vnode.$ && _child.data != vnode)           // the VNode element or the text are the same
 
               ? (
-                  _child.U && _child.U(),
+                  (_child.U || createElement)(),
                   dom.replaceChild(                                   // - If not, we replace the old element with the
                     _new_dom,                                         //   new one.
                     _child
@@ -173,8 +176,8 @@
     /* Remove extraneous nodes */
 
     while (_children[_c]) {                                           // The _c property keeps track of the number of
-      _children[_c].U && _children[_c].U();                           // elements in the VDom. If there are more child
-      dom.removeChild(_children[_c])                                  // nodes in the DOM, we remove them.
+      (_children[_c].U || createElement)();                           // elements in the VDom. If there are more child
+      _children[_c].remove();                                         // nodes in the DOM, we remove them.
     }
   }
 
@@ -217,9 +220,12 @@
     createElement,
     {
       get: (targetFn, tagName) =>
-        targetFn[tagName] || wrapClassProxy(
-          createElement.bind(global, tagName)
-        )
+        targetFn[tagName] ||                                          // Make sure we don't override any native
+                                                                      // property or method from the base function
+
+        wrapClassProxy(                                               // Otherwise, for every tag we extract a
+          createElement.bind(global, tagName)                         // class-wrapped crateElement method, bound to the
+        )                                                             // tag named as the property requested.
     }
   )
 
